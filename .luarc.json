@@ -1,0 +1,14 @@
+{
+  "workspace.library": [
+    // for linux
+    "$VIMRUNTIME",
+    "$XDG_DATA_HOME/nvim/lazy",
+    "${3rd}/luv/library",
+
+    // for windows
+    "C:\\Program Files\\Neovim\\share\\nvim\\runtime",
+    "C:\\Users\\${env:UserName}\\AppData\\Local\\nvim-data\\lazy",
+    "C:\\Users\\${env:UserName}\\AppData\\Local\\nvim-data\\mason\\packages\\lua-language-server\\meta\\3rd\\luv\\library"
+  ],
+  "runtime.version": "Lua 5.4"
+}
