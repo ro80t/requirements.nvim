@@ -154,4 +154,12 @@ function M.ensure(names, opts)
   return results
 end
 
+--- Installs every dependency registered via `setup`. Equivalent to
+--- `M.ensure(nil, opts)`.
+---@param opts Requirements.EnsureOpts|nil
+---@return Requirements.EnsureResult[]
+function M.ensure_all(opts)
+  return M.ensure(nil, opts)
+end
+
 return M

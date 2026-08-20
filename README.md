@@ -120,6 +120,8 @@ Plug 'author/plugin', { 'do': ':lua require("requirements").setup(spec); require
   `"timeout"`.
   - `opts.timeout` — max time to wait, in ms (default `300000`, 5 min).
   - `opts.notify` — whether to `vim.notify` the outcome (default `true`).
+- `require("requirements").ensure_all(opts?)` — shorthand for
+  `ensure(nil, opts)`; installs everything registered.
 - `require("requirements").is_installed(name)` — `executable(name) == 1`.
 - `require("requirements").resolve_command(name)` — the install command
   that would be used for `name` on the current environment, or `nil`.
