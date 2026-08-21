@@ -16,13 +16,16 @@ require("requirements").setup({
 })
 
 require("requirements").ensure({ "deno" })
+-- or
+require("requirements").ensureAll()
 ```
 
 `setup()` only registers commands (safe to call many times, from many
 plugins). `ensure()` is what actually checks `executable()` for each name,
 launches install commands for whatever is missing **in parallel**, and
 blocks until they have all finished (or `opts.timeout` elapses) before
-returning.
+returning. `ensure_all()` is a shorthand for `ensure()` with no `names`,
+i.e. it installs everything that has been registered via `setup()`.
 
 ## Command resolution
 
@@ -41,8 +44,12 @@ Every manager ultimately just needs to call `require("requirements").ensure(...)
 at some point before your plugin's dependents rely on the external tool.
 **mini.deps** and **vim.pack** can run code before the plugin is first
 loaded (a true "preinstall" hook), so requirements.nvim ships helpers that
-wire this up automatically. Managers that only offer a post-install
-build/run hook are just given the spec as an argument, from that hook.
+wire this up automatically. **No other manager supports a real preinstall
+hook** — lazy.nvim, packer.nvim, vim-plug, and paq-nvim only expose a
+post-install build/run hook, which runs *after* the plugin's files are
+already on disk, not before. For those (and for setups with no plugin
+manager at all), the spec is just given as an argument from wherever your
+code first has a chance to run — a build/run hook, or your own `init.lua`.
 
 ### mini.deps (automatic, pre-load)
 
@@ -107,6 +114,35 @@ Plug 'author/plugin', { 'do': ':lua require("requirements").setup(spec); require
     require("requirements").ensure(vim.tbl_keys(spec))
   end,
 }
+```
+
+### git submodule / no plugin manager
+
+Without a plugin manager, there's no install/build hook at all, so call
+`setup()` and `ensure()` (or `ensure_all()`) yourself, after the plugin has
+been added to `runtimepath`. Add requirements.nvim (and the plugin that
+needs it) as git submodules, e.g.:
+
+```sh
+git submodule add https://github.com/ro80t/requirements.nvim pack/vendor/start/requirements.nvim
+git submodule add https://github.com/author/plugin pack/vendor/start/plugin
+```
+
+Then, from your `init.lua`, after the submodules are on `runtimepath`
+(native packages under `pack/*/start/` are loaded automatically):
+
+```lua
+require("requirements").setup({
+  deno = {
+    windows = "winget install -e --id DenoLand.Deno",
+    macos = "brew install deno",
+    ubuntu = "sudo apt install -y deno",
+    arch = "sudo pacman -S --noconfirm deno",
+    freebsd = "sudo pkg install -y deno",
+  },
+})
+
+require("requirements").ensure_all()
 ```
 
 ## API
