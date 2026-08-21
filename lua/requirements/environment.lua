@@ -39,7 +39,7 @@ end
 
 --- Reads /etc/os-release (or /usr/lib/os-release) for distro info.
 --- Present on virtually all Linux distros; some BSDs ship one too.
----@return string|nil id, string|nil name, string[]|nil id_like
+---@return string|nil id, string|nil name, string[]|nil id_like, string|nil version_id
 local function detect_os_release()
   local content = read_file("/etc/os-release") or read_file("/usr/lib/os-release")
   if not content then
@@ -56,7 +56,7 @@ local function detect_os_release()
     end
   end
 
-  return fields.ID, fields.NAME or fields.PRETTY_NAME, id_like
+  return fields.ID, fields.NAME or fields.PRETTY_NAME, id_like, fields.VERSION_ID
 end
 
 ---@class Requirements.OSInfo
@@ -65,6 +65,8 @@ end
 ---@field distro string|nil          -- e.g. "ubuntu", "arch", "freebsd"
 ---@field distro_name string|nil     -- e.g. "Ubuntu", "Arch Linux"
 ---@field distro_like string[]|nil   -- e.g. { "debian" } for Ubuntu
+---@field version string|nil         -- e.g. "22.04" (os-release VERSION_ID, or OS release string)
+---@field arch string|nil            -- e.g. "x86_64", "arm64" (uname machine)
 
 ---@type Requirements.OSInfo|nil
 local cached
@@ -76,7 +78,8 @@ function M.get_os()
     return cached
   end
 
-  local sysname = uv.os_uname().sysname
+  local uname = uv.os_uname()
+  local sysname = uname.sysname
 
   ---@type Requirements.OSInfo
   local info = {
@@ -85,6 +88,8 @@ function M.get_os()
     distro = nil,
     distro_name = nil,
     distro_like = nil,
+    version = uname.release,
+    arch = uname.machine,
   }
 
   if sysname == "Windows_NT" then
@@ -98,11 +103,12 @@ function M.get_os()
   end
 
   if info.family == "linux" or info.family == "bsd" then
-    local id, name, id_like = detect_os_release()
+    local id, name, id_like, version_id = detect_os_release()
     if id then
       info.distro = id
       info.distro_name = name
       info.distro_like = id_like
+      info.version = version_id or info.version
     elseif info.family == "bsd" then
       -- Most BSDs don't ship /etc/os-release; fall back to uname.
       info.distro = sysname:lower()

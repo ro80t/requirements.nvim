@@ -2,7 +2,10 @@ local M = {}
 
 local environment = require("requirements.environment")
 
----@alias Requirements.Spec table<string, table<string, string>>
+---@alias Requirements.CommandNode
+---| string
+---| { version: table<string, Requirements.CommandNode>|nil, arch: table<string, Requirements.CommandNode>|nil }
+---@alias Requirements.Spec table<string, table<string, Requirements.CommandNode>>
 
 ---@type Requirements.Spec
 M.registry = {}
@@ -22,8 +25,40 @@ function M.is_installed(name)
   return vim.fn.executable(name) == 1
 end
 
+--- Narrows a `Requirements.CommandNode` down to a plain command string,
+--- optionally filtering by OS version and/or CPU architecture. A node is
+--- either a command string, or a table with an optional `version` and/or
+--- `arch` sub-table (each keyed by the matching identifier, mapping to a
+--- nested `Requirements.CommandNode`) — any combination of the two, or
+--- neither, is valid.
+---@param node Requirements.CommandNode|nil
+---@param os_info Requirements.OSInfo
+---@return string|nil
+local function resolve_node(node, os_info)
+  if type(node) == "string" then
+    return node
+  end
+  if type(node) ~= "table" then
+    return nil
+  end
+
+  if node.version and os_info.version and node.version[os_info.version] then
+    local resolved = resolve_node(node.version[os_info.version], os_info)
+    if resolved then
+      return resolved
+    end
+  end
+
+  if node.arch and os_info.arch and node.arch[os_info.arch] then
+    return resolve_node(node.arch[os_info.arch], os_info)
+  end
+
+  return nil
+end
+
 --- Resolves the install command for `name` on the current environment,
---- trying the exact distro id, then its `ID_LIKE` chain, then the OS family.
+--- trying the exact distro id, then its `ID_LIKE` chain, then the OS family
+--- (each of those may be further narrowed by OS version and/or CPU arch).
 ---@param name string
 ---@return string|nil
 function M.resolve_command(name)
@@ -35,18 +70,24 @@ function M.resolve_command(name)
   local os_info = environment.get_os()
 
   if os_info.distro and commands[os_info.distro] then
-    return commands[os_info.distro]
+    local resolved = resolve_node(commands[os_info.distro], os_info)
+    if resolved then
+      return resolved
+    end
   end
 
   if os_info.distro_like then
     for _, id in ipairs(os_info.distro_like) do
       if commands[id] then
-        return commands[id]
+        local resolved = resolve_node(commands[id], os_info)
+        if resolved then
+          return resolved
+        end
       end
     end
   end
 
-  return commands[os_info.family]
+  return resolve_node(commands[os_info.family], os_info)
 end
 
 ---@param cmd string

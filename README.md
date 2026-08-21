@@ -38,6 +38,43 @@ For a dependency name, the key looked up in its table is, in order:
 See `lua/requirements/environment.lua` for the underlying OS/distro
 detection (`require("requirements.environment").get_os()`).
 
+### Narrowing by OS version / CPU architecture
+
+The value for a distro/family key doesn't have to be a plain command
+string — it can also be a table with an optional `version` and/or `arch`
+sub-table, to further narrow the command down. Both are optional and
+independent: use only `version`, only `arch`, both nested together, or
+neither (a plain string), whatever a given dependency needs.
+
+```lua
+require("requirements").setup({
+  somepkg = {
+    ubuntu = {
+      version = {
+        ["22.04"] = {
+          arch = {
+            x86_64 = "sudo apt install -y somepkg-amd64",
+            aarch64 = "sudo apt install -y somepkg-arm64",
+          },
+        },
+        ["20.04"] = "sudo apt install -y somepkg-legacy", -- any arch
+      },
+      -- fallback for any other ubuntu version: match by arch only
+      arch = {
+        x86_64 = "sudo apt install -y somepkg-amd64",
+      },
+    },
+  },
+})
+```
+
+`version` is matched against the distro's `VERSION_ID` (from
+`/etc/os-release`) on Linux/BSD, or the OS release string elsewhere.
+`arch` is matched against `uname`'s `machine` field (e.g. `"x86_64"`,
+`"arm64"`, `"aarch64"`). If `version` is present but doesn't match the
+current OS version, resolution falls back to a sibling `arch` table (as
+above) before giving up as unsupported.
+
 ## Plugin manager integration
 
 Every manager ultimately just needs to call `require("requirements").ensure(...)`
