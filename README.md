@@ -51,6 +51,35 @@ already on disk, not before. For those (and for setups with no plugin
 manager at all), the spec is just given as an argument from wherever your
 code first has a chance to run — a build/run hook, or your own `init.lua`.
 
+### git submodule / no plugin manager
+
+Without a plugin manager, there's no install/build hook at all, so call
+`setup()` and `ensure()` (or `ensure_all()`) yourself, after the plugin has
+been added to `runtimepath`. Add requirements.nvim (and the plugin that
+needs it) as git submodules, e.g.:
+
+```sh
+git submodule add https://github.com/ro80t/requirements.nvim pack/vendor/start/requirements.nvim
+git submodule add https://github.com/author/plugin pack/vendor/start/plugin
+```
+
+Then, from your `init.lua`, after the submodules are on `runtimepath`
+(native packages under `pack/*/start/` are loaded automatically):
+
+```lua
+require("requirements").setup({
+  deno = {
+    windows = "winget install -e --id DenoLand.Deno",
+    macos = "brew install deno",
+    ubuntu = "sudo apt install -y deno",
+    arch = "sudo pacman -S --noconfirm deno",
+    freebsd = "sudo pkg install -y deno",
+  },
+})
+
+require("requirements").ensure_all()
+```
+
 ### mini.deps (automatic, pre-load)
 
 ```lua
@@ -114,35 +143,6 @@ Plug 'author/plugin', { 'do': ':lua require("requirements").setup(spec); require
     require("requirements").ensure(vim.tbl_keys(spec))
   end,
 }
-```
-
-### git submodule / no plugin manager
-
-Without a plugin manager, there's no install/build hook at all, so call
-`setup()` and `ensure()` (or `ensure_all()`) yourself, after the plugin has
-been added to `runtimepath`. Add requirements.nvim (and the plugin that
-needs it) as git submodules, e.g.:
-
-```sh
-git submodule add https://github.com/ro80t/requirements.nvim pack/vendor/start/requirements.nvim
-git submodule add https://github.com/author/plugin pack/vendor/start/plugin
-```
-
-Then, from your `init.lua`, after the submodules are on `runtimepath`
-(native packages under `pack/*/start/` are loaded automatically):
-
-```lua
-require("requirements").setup({
-  deno = {
-    windows = "winget install -e --id DenoLand.Deno",
-    macos = "brew install deno",
-    ubuntu = "sudo apt install -y deno",
-    arch = "sudo pacman -S --noconfirm deno",
-    freebsd = "sudo pkg install -y deno",
-  },
-})
-
-require("requirements").ensure_all()
 ```
 
 ## API
