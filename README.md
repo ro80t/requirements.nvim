@@ -17,7 +17,7 @@ require("requirements").setup({
 
 require("requirements").ensure({ "deno" })
 -- or
-require("requirements").ensureAll()
+require("requirements").ensure_all()
 ```
 
 `setup()` only registers commands (safe to call many times, from many
