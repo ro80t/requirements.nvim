@@ -75,6 +75,39 @@ require("requirements").setup({
 current OS version, resolution falls back to a sibling `arch` table (as
 above) before giving up as unsupported.
 
+#### Version specs (wildcard / caret / range)
+
+A `version` key doesn't have to be an exact string — it can also be an
+npm-style spec, checked (in this order after an exact match fails) as a
+wildcard, a caret range, or a hyphen range:
+
+```lua
+require("requirements").setup({
+  somepkg = {
+    ubuntu = {
+      version = {
+        ["24.*"] = "sudo apt install -y somepkg-new", -- wildcard: any 24.x
+        ["^22.04"] = "sudo apt install -y somepkg", -- caret: 22.04 <= v < 23.0
+        ["18.04-20.04"] = "sudo apt install -y somepkg-old", -- range: 18.04 <= v <= 20.04
+      },
+    },
+  },
+})
+```
+
+- **Wildcard** (`"1.0.*"`, `"1.*"`) — components before the `*` must match
+  exactly; the `*` (and anything after it) matches any value.
+- **Caret** (`"^1.0.0"`) — npm semantics: compatible with the given
+  version, up to (but excluding) the next version that changes the first
+  non-zero component. `^1.2.3` means `>=1.2.3 <2.0.0`, `^0.2.3` means
+  `>=0.2.3 <0.3.0`, `^0.0.3` means `>=0.0.3 <0.0.4`.
+- **Range** (`"1.0.0-2.0.0"`) — inclusive on both ends.
+
+Versions are compared component-by-component as dot-separated numbers
+(missing trailing components count as `0`, so `1.2` == `1.2.0`). If more
+than one `version` key would match, which one wins is unspecified — keep
+specs non-overlapping.
+
 ## Plugin manager integration
 
 Every manager ultimately just needs to call `require("requirements").ensure(...)`

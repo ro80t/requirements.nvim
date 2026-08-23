@@ -1,7 +1,7 @@
 -- Unit tests for requirements.resolve_command()'s spec formats: plain
--- strings (the traditional format), version-only, arch-only, and both
--- version+arch narrowing (nested either order, and as siblings with
--- fallback). Run with:
+-- strings (the traditional format), version-only (exact and spec keys:
+-- wildcard/caret/range), arch-only, and both version+arch narrowing
+-- (nested either order, and as siblings with fallback). Run with:
 --   nvim --headless -u NONE -c "luafile tests/resolve_command_test.lua" -c "qa"
 local this_file = debug.getinfo(1, "S").source:sub(2)
 local repo_root = vim.fs.dirname(vim.fs.dirname(this_file))
@@ -148,6 +148,39 @@ set("both_sibling_neither_matches", {
 check(
   requirements.resolve_command("both_sibling_neither_matches") == nil,
   "version+arch siblings: neither matching resolves to nil"
+)
+
+-- ── version specs: wildcard / caret / range ────────────────────────────
+
+set("version_wildcard_match", { ubuntu = { version = { ["22.*"] = "cmd wildcard" } } })
+check(requirements.resolve_command("version_wildcard_match") == "cmd wildcard", "version wildcard: matches")
+
+set("version_wildcard_nomatch", { ubuntu = { version = { ["23.*"] = "cmd wildcard" } } })
+check(requirements.resolve_command("version_wildcard_nomatch") == nil, "version wildcard: non-matching resolves to nil")
+
+set("version_caret_match", { ubuntu = { version = { ["^22.04"] = "cmd caret" } } })
+check(requirements.resolve_command("version_caret_match") == "cmd caret", "version caret: matches within range")
+
+set("version_caret_nomatch", { ubuntu = { version = { ["^23.0"] = "cmd caret" } } })
+check(requirements.resolve_command("version_caret_nomatch") == nil, "version caret: outside range resolves to nil")
+
+set("version_range_match", { ubuntu = { version = { ["20.04-23.04"] = "cmd range" } } })
+check(requirements.resolve_command("version_range_match") == "cmd range", "version range: matches within bounds")
+
+set("version_range_nomatch", { ubuntu = { version = { ["23.04-24.04"] = "cmd range" } } })
+check(requirements.resolve_command("version_range_nomatch") == nil, "version range: outside bounds resolves to nil")
+
+set("version_exact_wins_over_spec", {
+  ubuntu = {
+    version = {
+      ["22.04"] = "cmd exact",
+      ["22.*"] = "cmd wildcard",
+    },
+  },
+})
+check(
+  requirements.resolve_command("version_exact_wins_over_spec") == "cmd exact",
+  "version specs: exact key match is tried before spec keys"
 )
 
 if failures > 0 then

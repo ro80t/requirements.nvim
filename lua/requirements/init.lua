@@ -1,6 +1,7 @@
 local M = {}
 
 local environment = require("requirements.environment")
+local version = require("requirements.version")
 
 ---@alias Requirements.CommandNode
 ---| string
@@ -25,12 +26,39 @@ function M.is_installed(name)
   return vim.fn.executable(name) == 1
 end
 
+--- Looks up `os_info.version` in `version_table`. Tries an exact key match
+--- first; if none is found, falls back to treating keys as version specs
+--- (wildcard `"1.0.*"`, caret `"^1.0.0"`, or hyphen range `"1.0.0-2.0.0"`)
+--- and returns the first one (in sorted key order, for determinism) that
+--- matches. Overlapping specs should be avoided, since only one is picked.
+---@param version_table table<string, Requirements.CommandNode>
+---@param os_version string
+---@return Requirements.CommandNode|nil
+local function lookup_version(version_table, os_version)
+  local exact = version_table[os_version]
+  if exact then
+    return exact
+  end
+
+  local specs = vim.tbl_keys(version_table)
+  table.sort(specs)
+  for _, spec in ipairs(specs) do
+    if version.matches(spec, os_version) then
+      return version_table[spec]
+    end
+  end
+
+  return nil
+end
+
 --- Narrows a `Requirements.CommandNode` down to a plain command string,
 --- optionally filtering by OS version and/or CPU architecture. A node is
 --- either a command string, or a table with an optional `version` and/or
 --- `arch` sub-table (each keyed by the matching identifier, mapping to a
 --- nested `Requirements.CommandNode`) — any combination of the two, or
---- neither, is valid.
+--- neither, is valid. `version` keys may also be specs: a wildcard
+--- (`"1.0.*"`), a caret range (`"^1.0.0"`), or a hyphen range
+--- (`"1.0.0-2.0.0"`); see `lua/requirements/version.lua`.
 ---@param node Requirements.CommandNode|nil
 ---@param os_info Requirements.OSInfo
 ---@return string|nil
@@ -42,10 +70,13 @@ local function resolve_node(node, os_info)
     return nil
   end
 
-  if node.version and os_info.version and node.version[os_info.version] then
-    local resolved = resolve_node(node.version[os_info.version], os_info)
-    if resolved then
-      return resolved
+  if node.version and os_info.version then
+    local matched = lookup_version(node.version, os_info.version)
+    if matched then
+      local resolved = resolve_node(matched, os_info)
+      if resolved then
+        return resolved
+      end
     end
   end
 

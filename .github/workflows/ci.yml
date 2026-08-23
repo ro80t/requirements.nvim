@@ -36,3 +36,6 @@ jobs:
       - name: Run resolve_command tests
         shell: bash
         run: nvim --headless -u NONE -c "luafile tests/resolve_command_test.lua" -c "qa"
+      - name: Run version tests
+        shell: bash
+        run: nvim --headless -u NONE -c "luafile tests/version_test.lua" -c "qa"
